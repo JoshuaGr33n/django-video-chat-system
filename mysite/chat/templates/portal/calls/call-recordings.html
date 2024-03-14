@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Recordings</title>
+    <link rel="stylesheet" href="/static/styles.css"> <!-- Adjust the path to your CSS file -->
+</head>
+<body>
+    <p><a type="button" href="/dashboard">Back</a></p>
+    <h1>Call History</h1>
+    <div id="recordingsList">
+        {% if call_recordings %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Caller</th>
+                        <th>Receiver</th>
+                        <th>Duration</th>
+                        <th>Date</th>
+                        <!-- <th>Play</th> -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recording in call_recordings %}
+                        <tr>
+                            <td>{{ recording.caller.username }}</td>
+                            <td>{{ recording.receiver.username }}</td>
+                            <td>{{ recording.duration }}</td>
+                            <td>{{ recording.timestamp|date:"Y-m-d H:i" }}</td>
+                            <!-- <td>
+                                <audio controls>
+                                    <source src="{{ recording.recording.url }}" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </td> -->
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No recordings found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

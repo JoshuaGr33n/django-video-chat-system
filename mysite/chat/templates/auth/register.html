@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+</head>
+
+{% if user.is_authenticated == True %}
+    <meta http-equiv="REFRESH" content="0;url=/dashboard">
+{% endif %}
+
+<body>
+    <form id="registerForm">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Register</button>
+    </form>
+    <div id="message"></div>
+
+
+    <p><a href="{% url 'login' %}">Login</a></p>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $('#registerForm').submit(function(e){
+            e.preventDefault();
+            $.ajax({
+                type: 'POST',
+                url: '',
+                data: $(this).serialize(),
+                success: function(response) {
+                    if(response.success) {
+                        $('#message').text(response.message);
+                        // Redirect or update UI as needed
+                        window.location.href = response.redirect_url; 
+                    } else {
+                        $('#message').text(JSON.stringify(response.errors));
+                    }
+                },
+                error: function(xhr, errmsg, err) {
+                    console.log(xhr.status + ": " + xhr.responseText);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

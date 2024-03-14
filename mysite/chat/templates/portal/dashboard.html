@@ -1,0 +1,149 @@
+{% load static %}
+{% load custom_template_tags %}
+This is the dashboard
+
+
+<form action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button type="submit">Logout</button>
+</form>
+<audio id="ringingSound" src="/static/beep.mp3" loop></audio>
+
+{{welcome}}
+<!-- <div id="unreadMessagesCount"></div> -->
+{% if logged_in_user.role == user_model.ADMIN or logged_in_user.role == user_model.SUB_ADMIN %}
+<button class="toggle-admin-call-status-btn" data-user-id="{{ logged_in_user.id }}" data-call-permission="{{ logged_in_user.call_permission }}">
+    {{ logged_in_user.call_permission|yesno:"Cant Call, Call" }}
+</button>
+<div id="unreadMessagesCount" style="display: none;">0</div>
+<h2>Regular Users</h2>
+<ul id="contentDiv"> 
+    {% for user in users %}
+    {% message_request user.username as message_request %}
+    {% message_permission logged_in_user.username user.username as message_permission %}
+    {% user_chats user.username as user_chats %}
+    {% chat_is_read_status2 logged_in_user.username user.username as chat_is_read_status %}
+    <li>{{ user.full_name }} - {{ user.get_role_display }} {% if message_permission > 0 or user_chats == 0 %} - <a href="chat/{{ user.username }}">Chat  {% if chat_is_read_status > 0 %} ({{chat_is_read_status}}) {% endif %}</a>{% endif %}{% if message_request > 0 %} - (Message Request) <button class="update-btn" data-user-id="{{user.id}}">Accept</button> {% endif %} - <a
+            href="call-recordings/{{ user.username }}">Calls </a> <button class="toggle-user-status-btn"
+            data-user-id="{{ user.id }}" data-is-active="{{ user.is_active }}">
+            {{ user.is_active|yesno:"Block User,Unblock User" }}
+        </button>
+    </li>
+    {% endfor %}
+</ul>
+
+{% else %}
+
+{% chat_is_read_status logged_in_user.username as chat_is_read_status %}
+<a href="chat/{{ user.username }}">Chat <div id="unreadMessagesCount">({{chat_is_read_status}})</div></a>
+{% endif %}
+
+
+<script src="{% static 'js/main.js' %}"></script>
+<script>
+    let myName = "{{ logged_in_user.username }}"; // Django template variable for logged-in user's username
+    let receiver = "{{ logged_in_user.username }}";
+        // Define the login function
+        function login() {
+            connectSocket(myName, receiver); // Establish WebSocket connection
+        }
+    window.onload = function () {
+        login(); // Establish WebSocket connection on page load
+    };
+</script>
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    window.CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+<script>
+    $(document).ready(function () {
+        $('.toggle-user-status-btn').click(function () {
+            var $this = $(this);
+            var userId = $this.data('user-id');
+            $.ajax({
+                url: '/toggle-user-status/',
+                type: 'POST',
+                data: {
+                    'user_id': userId,
+                    'csrfmiddlewaretoken': window.CSRF_TOKEN
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $this.text(response.is_active ? "Block User" : "Unblock User"); // Update the button text
+                        $this.data('is-active', response.is_active); // Update the data attribute
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function () {
+                    alert("An error occurred.");
+                }
+            });
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        $('.toggle-admin-call-status-btn').click(function () {
+            var $this = $(this);
+            var userId = $this.data('user-id');
+            $.ajax({
+                url: '/toggle-admin-call-status/',
+                type: 'POST',
+                data: {
+                    'user_id': userId,
+                    'csrfmiddlewaretoken': window.CSRF_TOKEN
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        $this.text(response.call_permission ? "Cant Call" : "Call"); // Update the button text
+                        $this.data('call-permission', response.call_permission); // Update the data attribute
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function () {
+                    alert("An error occurred.");
+                }
+            });
+        });
+    });
+</script>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.update-btn').click(function() {
+        var userId = $(this).data('user-id'); // Get the user ID from the button's data attribute
+        $.ajax({
+            url: '/accept-message-request/', // Your endpoint to update chat messages
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                'user_id': userId, // Pass the user ID to the server
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val() // Handle CSRF
+            },
+            success: function(response) {
+                // Check response if update was successful
+                if(response.success) {
+                    alert('Message Request accepted for: ' + response.username);
+                    window.location.href = '/chat/'+response.username; // Specify the URL to redirect to
+                } else {
+                    // Handle failure (e.g., show an error message)
+                    alert('Message Request not accepted for: ' + userId);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error updating chat messages:", error);
+            }
+        });
+    });
+});
+</script>

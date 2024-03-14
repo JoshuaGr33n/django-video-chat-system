@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load my_filters %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/logo.png" type="image/png" />
+    <title>Chat</title>
+    <link rel="stylesheet" href="/static/call.css">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-top: 24px;
+            min-height: 90vh;
+        }
+    </style>
+
+    <script>
+        // let myName;
+    </script>
+</head>
+
+<body>
+    
+    <div id="unreadMessagesCount" style="display: none;">0</div>
+    <audio id="ringingSound" src="/static/beep.mp3" loop></audio>
+
+    {% if logged_in_user.role == user_model.ADMIN or logged_in_user.role == user_model.SUB_ADMIN %}
+    <select style="text-align:center; height: 50px; width:300px; padding-right: 15px; font-size: xx-large;"
+        name="passChat" id="passChat">
+        <option disabled>--Admins--</option>
+        {% for admin in admins_pass %}
+        <option value="{{admin.username}}">{{admin.full_name}}</option>
+        {% endfor %}
+    </select>
+    <input type="hidden" value="{{username}}" id="userUsername">
+    <button type="button" class="pass-chat-btn">Pass Chat</button>
+    {% endif %}
+    <div>
+        <div>
+            <!-- to input username and login -->
+            <div id="userName">
+                <div style="display: flex; flex-direction: column; align-items: center; width: 300px;">
+                    <input placeholder="What should we call you?"
+                        style="text-align:center; height: 50px; font-size: xx-large;" type="text" name=""
+                        id="userNameInput">
+                    <div style="height: 5px;"></div>
+                    <button onclick="login()" class="actionButton">Login</button>
+                </div>
+            </div>
+
+            <!-- to display current login user information  -->
+            <div id="userInfo">
+                <div style="display: flex; flex-direction: column; align-items: center; width: 300px;">
+                    <h1>Hello, <span id="nameHere"></span></h1>
+                </div>
+
+            </div>
+
+            <a type="button" href="/dashboard">Back</a>
+
+            {% if logged_in_user.role == user_model.ADMIN or logged_in_user.role == user_model.SUB_ADMIN %}
+            <!-- to make a call with name -->
+            <div id="call">
+                <div class="dialWrapper">
+                    <input placeholder="Whom to call?" style="text-align:center; height: 50px; font-size: xx-large;"
+                        type="hidden" name="callName" id="callName" value="{{username}}">
+                    <div class="dialNumpadHWrapper">
+                        <div class="dialNumber">
+                        </div>
+                        <div class="dialNumber">
+                            <button class="dialActionButton" onclick="call()">Call {{username}}</button>
+                        </div>
+                        <div class="dialNumber">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div id="call">
+                <div class="dialWrapper">
+                    <select
+                        style="text-align:center; height: 50px; width:300px; padding-right: 15px; font-size: xx-large;"
+                        type="text" name="callName" id="callName">
+                        <option disabled>--Admins--</option>
+                        {% for admin in admins %}
+                        {% if admin.call_permission == True %}
+                        <option value="{{admin.username}}">{{admin.full_name}}</option>
+                        {% else %}
+                        <option disabled>{{admin.full_name}} (Cant Call)</option>
+                        {% endif %}
+                        {% endfor %}
+
+                    </select>
+                    <div class="dialNumpadHWrapper">
+                        <div class="dialNumber">
+                        </div>
+                        <div class="dialNumber">
+                            <button class="dialActionButton" onclick="call()">Call</button>
+                        </div>
+                        <div class="dialNumber">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- to show incommming call and accept -->
+            <div id="answer">
+                <div class="incomingWrapper">
+                    <div class="itemWrapper">
+                        <h2>Incomming Call</h2>
+                    </div>
+                    <div class="itemWrapper">
+                        <img id="profileImageA" style="padding: 30px; width: 140px; height: 140px;"
+                            src="/static/profile.png" alt="">
+                    </div>
+                    <div class="itemWrapper">
+                        <h2 style="line-height: 0px;"><span id="callerName"></span></h2>
+                    </div>
+                    <div class="itemWrapper" style="display: flex; flex-direction: row; margin-bottom: 20px;">
+                        <button class="actionButton" onclick="answer()">Answer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- to show outgoing call -->
+            <div id="calling">
+                <div class="incomingWrapper">
+                    <div class="itemWrapper">
+                        <h2>Calling</h2>
+                    </div>
+                    <div class="itemWrapper">
+                        <img id="profileImageCA" style="padding: 30px; width: 140px; height: 140px;"
+                            src="/static/profile.png" alt="">
+                    </div>
+                    <div class="itemWrapper">
+                        <h3 style="line-height: 0px;"><span id="otherUserNameCA"></span></h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- to show call in progress call -->
+            <div id="inCall">
+                <div class="incomingWrapper">
+                    <div class="itemWrapper">
+                        <h3>On Call With</h3>
+                        <h2 style="line-height: 0px;"><span id="otherUserNameC"></span></h2>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+
+            <!-- to show local and remote video -->
+            <div id="videos">
+                <div style="position:absolute; top:0; right:0; padding-right: 20px; padding-top: 20px">
+                    <video width="100px" id="localVideo" autoplay muted playsinline></video>
+                </div>
+                <div id="remoteVideoDiv">
+                    <video style="width: 500px;" id="remoteVideo" autoplay playsinline></video>
+                </div>
+            </div>
+            <div style="flex-grow: 1;">
+            </div>
+
+            <button id="declineCallButton" style="display: none;" onclick="declineCall()">Decline Call</button>
+            <button id="endCallButton" style="display: none;" onclick="endCallBeforeAnswer()">End Call</button>
+        </div>
+
+    </div>
+    <div style="flex-grow: 1;">
+    </div>
+
+    <!-- Add these buttons inside your existing HTML where appropriate -->
+    <div id="callActions" style="display: none;">
+        <button id="endCallButton" onclick="endCall()">End Call</button>
+        <!-- <button id="toggleVideoButton" onclick="toggleVideo()">Turn Off Video</button> -->
+        <button id="toggleAudioButton" onclick="toggleAudio()">Mute Audio</button>
+    </div>
+
+    {% if logged_in_user.role == user_model.ADMIN or logged_in_user.role == user_model.SUB_ADMIN %}
+    <!-- Record Calls -->
+    <div id="callRecordActions" style="display: none;">
+        <button id="startCallRecording">Start Recording</button>
+        <button id="stopCallRecording" disabled>Stop Recording</button>
+    </div>
+    {% endif %}
+
+    <div id="chatSection">
+        <h2>Chat</h2>
+        <div id="chatMessages" style="border: 1px solid #ccc; height: 200px; overflow-y: scroll;">
+            {% for message in chat_messages %}
+            <div class="{{ message.sender.username }}">
+                <strong>{{ message.sender.username }}:</strong>
+                {% if message.message|is_base64_image %}
+                <!-- It's an image, render an img tag -->
+                <img src="{{ message.message }}" style="max-width: 200px; max-height: 200px;">
+                {% elif message.message|is_base64_audio %}
+                <!-- It's audio, render an audio tag -->
+                <audio controls src="{{ message.message }}"></audio>
+                {% else %}
+                <!-- It's not an image, render the text -->
+                {{ message.message }}
+                {% endif %}
+
+                {% if logged_in_user.role == user_model.ADMIN or logged_in_user.role == user_model.SUB_ADMIN %}
+                <!-- Delete button for the message -->
+                <button class="delete-message-btn" data-message-id="{{ message.id }}">Delete</button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <input type="text" id="chatMessage" placeholder="Type your message here...">
+        <button onclick="sendChatMessage()">Send</button>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="sendFile()">Send File</button>
+
+        <div>
+            <button id="startRecording">Start Recording</button>
+            <button id="stopRecording" disabled>Stop Recording</button>
+        </div>
+
+
+    </div>
+    {% if user_is_admin_or_sub_admin_and_has_chats %}
+    <p><button onclick="deleteAllMessages()">Clear Chat {{chat_count}}</button></p>
+    {% endif %}
+
+
+
+
+    <!-- <div>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <a href="https://www.youtube.com/watch?v=N7lbtbmqLvM">
+                Video Call in Django with WebRTC and Django Channels (Video Guide)
+            </a>
+            <a href="https://www.bloggernepal.com/2021/10/video-call-in-django-with-webrtc-and-channels.html">
+                Video Call in Django with WebRTC and Channels (Article)
+            </a>
+            <a href="https://www.bloggernepal.com/2021/05/setup-stun-and-turn-server-on-ubuntu.html">
+                Setup STUN and TURN server on Ubuntu
+            </a>
+            <a href="https://github.com/InfoDevkota/WebRTC-Django-Django-Channels-Video-Call">
+                Github Repository
+            </a>
+        </div>
+    </div> -->
+
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        document.getElementById("call").style.display = "none";
+        document.getElementById("userInfo").style.display = "none";
+        document.getElementById("answer").style.display = "none";
+        document.getElementById("inCall").style.display = "none";
+        document.getElementById("calling").style.display = "none";
+        document.getElementById("videos").style.display = "none";
+
+    </script>
+    <!-- <script>
+        function login() {
+            // let userName = document.getElementById("userNameInput").value;
+            let userName = "{{ logged_in_user.username }}";
+            myName = userName;
+            document.getElementById("userName").style.display = "none";
+            document.getElementById("call").style.display = "block";
+
+            document.getElementById("nameHere").innerHTML = userName;
+            document.getElementById("userInfo").style.display = "block";
+
+            connectSocket();
+        }
+
+        
+
+
+    </script> -->
+
+    <script>
+        // Define the global variable for the username
+
+        let myName = "{{ logged_in_user.username }}";
+        let receiver = "{{ receiver_username }}";
+        // Define the login function
+        function login() {
+
+            document.getElementById("userName").style.display = "none";
+            document.getElementById("call").style.display = "block";
+            document.getElementById("nameHere").innerHTML = myName;
+            document.getElementById("userInfo").style.display = "block";
+            connectSocket(myName, receiver); // Establish WebSocket connection
+        }
+
+        // Automatically call the login function when the page is fully loaded
+        window.onload = function () {
+            login();
+        };
+
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var deleteButtons = document.querySelectorAll('.delete-message-btn');
+            deleteButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var messageId = this.getAttribute('data-message-id');
+                    deleteMessage(messageId);
+                });
+            });
+        });
+
+        function deleteMessage(messageId) {
+            console.log(messageId);
+            fetch(`/delete-chat/${messageId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 'message_id': messageId })
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // Message deleted successfully, remove the message div or refresh the chat
+                        console.log('Message deleted successfully');
+                        // Refresh the chat or remove the message element from the DOM
+                        location.reload(); // This is a simple way to refresh the chat and reflect the deletion
+                    } else {
+                        console.error('Failed to delete the message');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // Function to get CSRF token for Django
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    window.CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+    <script>
+        $(document).ready(function () {
+            $('.pass-chat-btn').click(function () {
+                var selectedAdmin = $('#passChat').val();
+                var userUsername = $('#userUsername').val();
+                console.log(userUsername);
+                $.ajax({
+                    url: '/pass-chat/',  // Adjust to match your URL configuration
+                    type: 'POST',
+                    data: {
+                        'adminUsername': selectedAdmin,
+                        'userUsername': userUsername,
+                        'csrfmiddlewaretoken': window.CSRF_TOKEN
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alert(response.message);
+                            window.location.href = '/dashboard';  // Redirect to dashboard
+                        } else {
+                            alert(response.message);  // Display error message
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error updating admin flag:", error);
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+
+</html>

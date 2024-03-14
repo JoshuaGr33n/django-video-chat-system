@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+</head>
+
+{% if user.is_authenticated == True %}
+    <meta http-equiv="REFRESH" content="0;url=/dashboard">
+{% endif %}
+
+<body>
+    <form method="post" id="" action="{% url 'login' %}">
+        {% csrf_token %}
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <input type="submit" value="Login">
+    </form>
+    <div id="message"></div>
+
+    <p><a href="{% url 'register' %}">Register</a></p>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+        $(document).ready(function () {
+            const csrftoken = window.CSRF_TOKEN;
+            $('#loginForm').submit(function (e) {
+                e.preventDefault();  // Prevent the default form submission
+                $.ajax({
+                    url: $(this).attr('action'),  // Use the form's action
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    success: function (data) {
+                        if (data.success) {
+                            window.location.href = '/dashboard';  // Redirect on success
+                        }
+                    },
+                    error: function(xhr, status, error) {
+    try {
+        var response = JSON.parse(xhr.responseText);
+        var errorMessage = response.__all__[0].message; // Attempt to access the message as before
+        console.log(errorMessage);
+    } catch(e) {
+        console.error("Error parsing response as JSON:", e);
+        // Handle non-JSON responses or further inspect the response
+        console.log("Response was:", xhr.responseText);
+    }
+}
+
+                });
+            });
+        });
+    </script>
+
+</body>
+
+</html>
